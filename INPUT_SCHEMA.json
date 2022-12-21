@@ -1,0 +1,54 @@
+{
+    "title": "AngelList (WellFound) Jobs Scraper",
+    "description": "AngelList Scraper input schema",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "role": {
+            "title": "Select role",
+            "type": "string",
+            "description": "Select the role you want to search for",
+            "default": "all",
+            "editor": "select",
+            "prefill": "all",
+            "enum": [
+                "all",
+                "software-engineer",
+                "engineering-manager",
+                "product-manager",
+                "backend-engineer",
+                "mobile-engineer",
+                "product-designer",
+                "frontend-engineer",
+                "full-stack-engineer",
+                "data-scientist",
+                "designer",
+                "software-architect",
+                "devops-engineer"
+            ],
+            "enumTitles": [
+                "All Jobs",
+                "Software Engineer",
+                "Engineering Manager",
+                "Product Manager",
+                "Backend Engineer",
+                "Mobile Engineer",
+                "Product Designer",
+                "Frontend Engineer",
+                "Full Stack Engineer",
+                "Data Scientist",
+                "Designer",
+                "Software Architect",
+                "Devops Engineer"
+            ]
+        },
+        "remoteOnly": {
+            "title": "Only remote jobs",
+            "type": "boolean",
+            "description": "Get results only for remote jobs",
+            "default": false,
+            "editor": "checkbox"
+        }
+    },
+    "required": ["role"]
+}
