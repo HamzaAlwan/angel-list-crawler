@@ -1,7 +1,7 @@
 {
-	"name": "angel-list-crawler",
+	"name": "angel-list-scraper",
 	"version": "0.0.1",
-	"description": "Translate any text to any of the supported languages using angel.co",
+	"description": "Scrape jobs and companies on angel.co",
 	"type": "module",
 	"dependencies": {
 		"apify": "^3.1.1",

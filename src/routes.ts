@@ -16,8 +16,6 @@ cheerioRouter.addHandler(labels.JOBS_LIST, async ({ request, response, json, cra
 
     log.info(`[${label}] Processing ${request.loadedUrl || request.url}`);
 
-    log.info(`STATUS ${response.statusCode} ${response.statusMessage}`);
-
     if (!json) {
         throw new Error(`[${label}] No json found for ${request.loadedUrl || request.url}`);
     }

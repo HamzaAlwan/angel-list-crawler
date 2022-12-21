@@ -6,7 +6,9 @@ import { BASE_URL, labels } from '../consts.js';
 export let requestHeaders: any = null;
 
 const proxyConfiguration = await Actor.createProxyConfiguration({
-    apifyProxyGroups: ['RESIDENTIAL'],
+    // apifyProxyGroups: ['RESIDENTIAL'],
+    groups: ['SHADER'],
+    countryCode: 'US',
 });
 
 export const playwrightCrawler = new PlaywrightCrawler({
@@ -44,6 +46,9 @@ export const playwrightCrawler = new PlaywrightCrawler({
         }
 
         log.info(`[Playwright] Headers scraped`);
+
+        // Delete content length header, since our requests are different
+        delete headers['content-length'];
 
         requestHeaders = headers;
     }

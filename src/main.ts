@@ -14,7 +14,8 @@ const { role, isRemote }: { role: string; isRemote: boolean } = (await Actor.get
 };
 
 const proxyConfiguration = await Actor.createProxyConfiguration({
-    // apifyProxyGroups: ['RESIDENTIAL'],
+    groups: ['SHADER'],
+    countryCode: 'US',
 });
 
 const cheerioCrawler = new CheerioCrawler({
@@ -24,18 +25,25 @@ const cheerioCrawler = new CheerioCrawler({
         maxConcurrency: 1,
         desiredConcurrency: 1,
     },
-    maxRequestRetries: 8,
+    maxRequestRetries: 15,
+    sessionPoolOptions: {
+        sessionOptions: {
+            maxUsageCount: 15,
+        }
+    },
+    maxRequestsPerMinute: 10,
+    failedRequestHandler: async ({ request: { label, loadedUrl, url }, response }) => {
+        log.warning(`STATUS ${response.statusCode} ${response.statusMessage}`, {
+            url: loadedUrl || url,
+        });
+
+        await scrapeHeaders(label as string);
+    },
 });
 
 await scrapeHeaders(labels.INITIAL);
 
 const requests: RequestOptions[] = getInitialJobsListRequests(role, isRemote);
-
-import fs from 'fs';
-
-fs.writeFileSync('requests.json', JSON.stringify(requests, null, 4));
-
-process.exit()
 
 log.info(`[Cheerio] Started crawling...`);
 await cheerioCrawler.run(requests);
