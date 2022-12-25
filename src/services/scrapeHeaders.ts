@@ -1,7 +1,7 @@
-import { PlaywrightCrawler, log } from 'crawlee';
+import { PlaywrightCrawler } from 'crawlee';
 import { Actor } from 'apify';
 
-import { BASE_URL, labels } from '../consts.js';
+import { BASE_URL } from '../consts.js';
 
 export let requestHeaders: any = null;
 
@@ -56,11 +56,7 @@ export const playwrightCrawler = new PlaywrightCrawler({
 
 let headersScrapesCount = 0;
 // This function is called when the crawler encounters an error, it's used to update the headers
-export const scrapeHeaders = async (label: string) => {
-    if (label !== labels.INITIAL) {
-        log.error(`[${label}] Received captcha, getting new headers...`);
-    }
-
+export const scrapeHeaders = async () => {
     const url = `${BASE_URL}/role/r/software-engineer`;
     await playwrightCrawler.run([
         {

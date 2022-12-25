@@ -4,19 +4,13 @@ import { Actor } from 'apify';
 import { cheerioRouter } from './routes.js';
 import { getInitialJobsListRequests } from './services/utils.js';
 import { scrapeHeaders } from './services/scrapeHeaders.js';
-import { labels } from './consts.js';
+import { Input } from './types.js';
 
 await Actor.init();
 
-const { role, isRemote }: { role: string; isRemote: boolean } = (await Actor.getInput()) ?? {
-    role: 'all',
-    isRemote: false,
-};
+export const input: Input = await Actor.getInput() as Input;
 
-const proxyConfiguration = await Actor.createProxyConfiguration({
-    groups: ['SHADER'],
-    countryCode: 'US',
-});
+const proxyConfiguration = await Actor.createProxyConfiguration(input.proxyConfiguration);
 
 const cheerioCrawler = new CheerioCrawler({
     proxyConfiguration,
@@ -28,22 +22,25 @@ const cheerioCrawler = new CheerioCrawler({
     maxRequestRetries: 15,
     sessionPoolOptions: {
         sessionOptions: {
-            maxUsageCount: 15,
-        }
+            maxUsageCount: 10,
+        },
     },
-    maxRequestsPerMinute: 10,
     failedRequestHandler: async ({ request: { label, loadedUrl, url }, response }) => {
-        log.warning(`STATUS ${response.statusCode} ${response.statusMessage}`, {
-            url: loadedUrl || url,
-        });
+        log.warning(
+            `[${label}] Received an error ${response.statusCode} ${response.statusMessage}`,
+            {
+                url: loadedUrl || url,
+            }
+        );
 
-        await scrapeHeaders(label as string);
+        await scrapeHeaders();
     },
 });
 
-await scrapeHeaders(labels.INITIAL);
+// Get the initial headers
+await scrapeHeaders();
 
-const requests: RequestOptions[] = getInitialJobsListRequests(role, isRemote);
+const requests: RequestOptions[] = getInitialJobsListRequests(input);
 
 log.info(`[Cheerio] Started crawling...`);
 await cheerioCrawler.run(requests);

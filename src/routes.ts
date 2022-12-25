@@ -1,14 +1,16 @@
+import { Actor } from 'apify';
 import { createCheerioRouter, RequestOptions } from 'crawlee';
 
-import { labels } from './consts.js';
+import { BASE_URL, BASE_COMPANY_URL, getJobUrl, JobType, labels } from './consts.js';
+import { input } from './main.js';
 import { scrapeHeaders } from './services/scrapeHeaders.js';
-import { getJobDetailsRequest, getJobsListRequest } from './services/utils.js';
+import { getJobDetailsRequest, getJobsListRequest, getStartupDetails, isCaptcha } from './services/utils.js';
 
 import type { JobDetailsResponse, JobListingResponse } from './types.js';
 
 export const cheerioRouter = createCheerioRouter();
 
-cheerioRouter.addHandler(labels.JOBS_LIST, async ({ request, response, json, crawler, log }) => {
+cheerioRouter.addHandler(labels.JOBS_LIST, async ({ request, json, crawler, log }) => {
     const {
         label,
         userData: { role, initialRequest },
@@ -26,7 +28,8 @@ cheerioRouter.addHandler(labels.JOBS_LIST, async ({ request, response, json, cra
 
     // If we get a captcha, we need to restart the playwright crawler to get new headers
     if (url && url.includes('captcha')) {
-        request.headers = await scrapeHeaders(label as string);
+        // await isCaptcha(request);
+        request.headers = await scrapeHeaders();
         throw new Error(`[${label}] Received captcha, retrying with new headers`);
     } else {
         if (initialRequest) {
@@ -52,15 +55,13 @@ cheerioRouter.addHandler(labels.JOBS_LIST, async ({ request, response, json, cra
             throw new Error('No jobs found');
         }
 
-        const jobsRequests: RequestOptions[] = startups.flatMap((startup): RequestOptions[] => {
-            return getJobDetailsRequest(startup);
-        });
+        const jobsRequests: RequestOptions[] = startups.flatMap(getJobDetailsRequest);
 
         await crawler.addRequests(jobsRequests);
     }
 });
 
-cheerioRouter.addHandler(labels.JOB_DETAILS, async ({ request, json, log}) => {
+cheerioRouter.addHandler(labels.JOB_DETAILS, async ({ request, json, log }) => {
     const { label } = request;
 
     log.info(`[${label}] Processing ${request.loadedUrl || request.url}`);
@@ -69,17 +70,85 @@ cheerioRouter.addHandler(labels.JOB_DETAILS, async ({ request, json, log}) => {
         throw new Error(`[${label}] No json found for ${request.loadedUrl || request.url}`);
     }
 
-    const { url, data } = json as JobDetailsResponse;
+    const {
+        url,
+        data: { jobListing },
+    } = json as JobDetailsResponse;
 
-    if (data) {
-        log.info(`[${label}] Found JSON`);
+    // If we get a captcha, we need to restart the playwright crawler to get new headers
+    if (url && url.includes('captcha')) {
+        // await isCaptcha(request);
+        request.headers = await scrapeHeaders();
+        throw new Error(`[${label}] Received captcha, retrying with new headers`);
+    } else {
+        const {
+            id,
+            title,
+            slug,
+            description,
+            descriptionSnippet,
+            // source,
+            // atsSource,
+            liveStartAt,
+            public: isPublic,
+            remote,
+            jobType,
+            yearsExperienceMin,
+            visaSponsorship,
+            locationNames,
+            acceptedRemoteLocationNames,
+            compensation,
+            estimatedSalary,
+            equity,
+            usesEstimatedSalary,
+            remoteConfig,
+            skills,
+            recruitingContact,
+            startup,
+        } = jobListing;
+
+        // Make the property more readable
+        remoteConfig.workFromHomeFlexible = remoteConfig.wfhFlexible;
+        delete remoteConfig.wfhFlexible;
+
+        // Handle job details
+        const jobDetails = {
+            id: id,
+            title: title,
+            url: getJobUrl(startup.slug, `${id}-${slug}`),
+            description,
+            descriptionSnippet,
+            // source,
+            // atsSource,
+            liveStartAt,
+            public: isPublic,
+            remote,
+            jobType: JobType[jobType as keyof typeof JobType],
+            yearsExperienceMin,
+            visaSponsorship,
+            locationNames,
+            acceptedRemoteLocationNames,
+            compensation,
+            estimatedSalary,
+            usesEstimatedSalary,
+            equity,
+            remoteConfig: {
+                ...remoteConfig,
+                hiringTimeZones: remoteConfig.hiringTimeZones.map((tz) => tz.name),
+            },
+            skills: skills.map((skill) => skill.displayName),
+            recruitingContact: {
+                name: recruitingContact.user.name,
+                profileUrl: `${BASE_URL}/p/${recruitingContact.user.slug}`,
+                avatarUrl: recruitingContact.user.avatarURL,
+            },
+            startup: getStartupDetails(startup)
+        };
+
+        if (input.startupSimple) {
+            await Actor.pushData(jobDetails);
+        } else {
+            // Send a new request to get more details about the startup
+        }
     }
-
-    // // If we get a captcha, we need to restart the playwright crawler to get new headers
-    // if (url && url.includes('captcha')) {
-    //     request.headers = await scrapeHeaders(label as string);
-    //     throw new Error(`[${label}] Received captcha, retrying with new headers`);
-    // } else {
-    //     // Handle jobs requests
-    // }
 });

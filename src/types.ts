@@ -1,3 +1,12 @@
+import { ProxyConfigurationOptions } from 'apify';
+
+export type Input = {
+    role: string;
+    remoteOnly: boolean;
+    startupSimple: boolean;
+    proxyConfiguration?: ProxyConfigurationOptions;
+};
+
 // [Start] JOB LISTINGS
 export type JobListingResponse = {
     data: {
@@ -39,7 +48,7 @@ export type JobDetailsResponse = {
             equity: string;
             usesEstimatedSalary: boolean;
             remoteConfig: RemoteConfig;
-            skills: Skill[];
+            skills: BasicInfo[];
             recruitingContact: RecruitingContact;
             startup: Startup;
         };
@@ -109,11 +118,11 @@ export type JobListingsConnection = {
             equity: string;
             usesEstimatedSalary: boolean;
             remoteConfig: RemoteConfig;
-            skills: Skill[];
+            skills: BasicInfo[];
             recruitingContact: RecruitingContact;
         };
     }[];
-}
+};
 
 export type Stories = {
     totalCount: number;
@@ -144,7 +153,7 @@ export type Stories = {
             };
         };
     }[];
-}
+};
 // [End] COMPANY PROFILE
 
 // [Start] SHARED
@@ -152,9 +161,9 @@ export type Startup = {
     id: string;
     name: string;
     slug: string;
-    logoURL: string;
+    logoUrl: string;
     productDescription?: string;
-    companyURL: string;
+    companyUrl: string;
     companySize: string;
     highConcept: string;
     badges: {
@@ -168,19 +177,21 @@ export type Startup = {
         slug: string;
         title: string;
     }[];
-    marketTaggings: Skill[];
+    marketTaggings: BasicInfo[];
+    locationTaggings: BasicInfo[];
 };
 
-export type Skill = {
+export type BasicInfo = {
     id: string;
-    displayName: string;
     slug: string;
+    displayName: string;
 };
 
 export type RemoteConfig = {
     id: string;
     kind: string;
-    wfhFlexible: boolean;
+    wfhFlexible?: boolean;
+    workFromHomeFlexible?: boolean;
     collaborationStartAt: null;
     collaborationEndAt: null;
     collaborationTimeZone: null;
@@ -195,6 +206,7 @@ export type RecruitingContact = {
     user: {
         id: string;
         name: string;
+        slug: string;
         avatarURL: string;
     };
 };
@@ -215,7 +227,7 @@ export type Output = {
     jobId: string;
     jobTitle: string;
     jobType: string;
-    requiredSkills: string[];
+    requiredBasicInfos: string[];
     acceptedRemoteLocationNames: string[];
     visaSponsorship: boolean;
     yearsExperienceMin: number;

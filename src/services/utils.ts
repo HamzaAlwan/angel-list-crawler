@@ -1,32 +1,33 @@
-import { RequestOptions } from 'crawlee';
+import { Request, RequestOptions } from 'crawlee';
 
-import { graphqlQueries, GRAPHQL_URL, labels, roles } from '../consts.js';
-import { Startup } from '../types.js';
-import { requestHeaders } from './scrapeHeaders.js';
+import { BASE_COMPANY_URL, graphqlQueries, GRAPHQL_URL, labels, roles } from '../consts.js';
+import { input } from '../main.js';
+import { Input, Startup } from '../types.js';
+import { requestHeaders, scrapeHeaders } from './scrapeHeaders.js';
 
-export const getInitialJobsListRequests = (role: string, isRemote: boolean): RequestOptions[] => {
+export const getInitialJobsListRequests = ({ role }: Input): RequestOptions[] => {
     if (role === 'all') {
-        return roles.map((role) => getJobsListRequest(role, 1, isRemote));
+        return roles.map((role) => getJobsListRequest(role, 1));
     } else {
         return roles
             .filter((role) => role === role)
-            .map((role) => getJobsListRequest(role, 1, isRemote));
+            .map((role) => getJobsListRequest(role, 1));
+    }
+};
+
+export const isCaptcha = async (request: Request) => {
+    const { url, label } = request;
+    if (url && url.includes('captcha')) {
+        request.headers = await scrapeHeaders();
+        throw new Error(`[${label}] Received captcha, retrying with new headers`);
     }
 };
 
 export const getJobsListRequest = (
     role: string,
-    page: number = 1,
-    isRemote: boolean = false
+    page: number = 1
 ): RequestOptions => {
-    const payload = {
-        operationName: 'SeoLandingRoleSearchPage',
-        variables: {
-            page,
-            role,
-        },
-        query: graphqlQueries.jobsList(isRemote).loc?.source?.body,
-    };
+    const payload = graphqlQueries.jobsListQuery({ role, page });
 
     return {
         method: 'POST',
@@ -43,14 +44,9 @@ export const getJobsListRequest = (
 };
 
 export const getJobDetailsRequest = (startup: Startup): RequestOptions[] => {
+    // Gets the job details for each job listing of the input role
     return startup.highlightedJobListings.map((job) => {
-        const payload = {
-            operationName: 'JobApplicationModal',
-            variables: {
-                jobListingId: job.id,
-            },
-            query: graphqlQueries.jobDetails.loc?.source?.body,
-        };
+        const payload = graphqlQueries.jobDetailsQuery(job.id);
 
         return {
             method: 'POST',
@@ -64,13 +60,7 @@ export const getJobDetailsRequest = (startup: Startup): RequestOptions[] => {
 };
 
 export const getCompanyProfileRequest = (startupSlug: string): RequestOptions => {
-    const payload = {
-        operationName: 'CompanyProfile',
-        variables: {
-            startupSlug,
-        },
-        query: graphqlQueries.companyProfile.loc?.source?.body,
-    };
+    const payload = graphqlQueries.companyProfileQuery(startupSlug);
 
     return {
         method: 'POST',
@@ -80,4 +70,54 @@ export const getCompanyProfileRequest = (startupSlug: string): RequestOptions =>
         label: labels.JOB_DETAILS,
         useExtendedUniqueKey: true,
     };
+};
+
+export const getCompaniesListRequest = (page: number): RequestOptions => {
+    const payload = graphqlQueries.companiesListQuery({ page, perPage: 1000 });
+
+    return {
+        method: 'POST',
+        url: GRAPHQL_URL,
+        headers: requestHeaders,
+        payload: JSON.stringify(payload),
+        label: labels.JOB_DETAILS,
+        useExtendedUniqueKey: true,
+    };
+};
+
+export const getStartupDetails = (startup: Startup) => {
+    if (input.startupSimple) {
+        const {
+            name,
+            highConcept,
+            productDescription,
+            companySize,
+            slug: startupSlug,
+            companyUrl,
+            logoUrl,
+            locationTaggings,
+            badges,
+            marketTaggings,
+        } = startup;
+
+        return {
+            name,
+            highConcept,
+            productDescription,
+            companySize: companySize.replace(/SIZE_/g, '').replace(/_/g, '-'),
+            companyProfileUrl: `${BASE_COMPANY_URL}/${startupSlug}`,
+            companyUrl,
+            logoUrl,
+            locationTaggings: locationTaggings.map((tag) => tag.displayName),
+            marketTaggings: marketTaggings.map((tag) => tag.displayName),
+            badges: badges.map((badge) => ({
+                label: badge.label,
+                description: badge.tooltip,
+                rating: badge.rating,
+            })),
+        };
+    } else {
+        // handle full startup details
+        return {};
+    }
 };
